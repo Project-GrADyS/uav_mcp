@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["uav_api*"]
+
+[project]
+name = "uav_api"
+version = "0.1.0"
+description = "Uav_api is a python package that provides a HTTP interface for MAVLink commands for ardupilot vehicles"
+keywords = ["mavlink", "http", "simulation", "gradys", "LAC", "PUC", "drone", "ardupilot"]
+authors = [
+    { name = "Francisco Meirelles Fleury", email = "franmeifleury@gmail.com" }
+]
+license = { file = "LICENSE.txt" }
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.10"
+
+dependencies = [
+    'fastapi>=0.115.4',
+    'MAVProxy>=1.8.71',
+    'pydantic>=2.9.2',
+    'pymavlink>=2.4.41',
+    'uvicorn>=0.32.0',
+    'future>=1.0.0',
+    'pexpect>=4.9.0',
+    'aiohttp>=3.9.0',
+    'psutil>=5.9.0',
+    'python-multipart>=0.0.6',
+    'fastapi-mcp>=0.4.0'
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Project-GrADyS/uav_api"
+
+[project.scripts]
+uav-api = "uav_api.run_api:main"
