@@ -1,8 +1,10 @@
-# UAV API
+# UAV MCP
 
-HTTP REST API for controlling ArduPilot-compatible UAVs (QuadCopters). Supports real drones via MAVLink and simulated drones via ArduPilot SITL.
+MCP server for controlling ArduPilot-compatible UAVs (QuadCopters). Exposes drone command, movement, and telemetry as **MCP tools** via Streamable HTTP, powered by [`fastapi-mcp`](https://github.com/tadata-ru/fastapi-mcp). Also serves a REST API with interactive Swagger docs. Supports real drones via MAVLink and simulated drones via ArduPilot SITL.
 
 **Features:**
+- **MCP tool interface** at `/mcp` — connect any MCP client (Claude Desktop, Claude Code, LangGraph, custom agents) to control drones
+- All REST endpoints automatically exposed as MCP tools (Streamable HTTP transport)
 - Full flight control: arm, takeoff, land, RTL, speed configuration
 - GPS and NED movement commands (fire-and-forget and blocking variants)
 - Rich telemetry: GPS, NED position, compass, battery, sensor health
@@ -26,7 +28,7 @@ HTTP REST API for controlling ArduPilot-compatible UAVs (QuadCopters). Supports 
 ## Installing from PyPI (recommended)
 
 ```bash
-pip install uav-api
+pip install uav-mcp
 ```
 
 Restart your terminal after installation.
@@ -34,8 +36,8 @@ Restart your terminal after installation.
 ## Installing from source (development)
 
 ```bash
-git clone https://github.com/Project-GrADyS/uav_api
-cd uav_api
+git clone https://github.com/Project-GrADyS/uav_mcp
+cd uav_mcp
 pip install -e .
 ```
 
@@ -50,7 +52,7 @@ Restart your terminal after installation.
 Connect your drone via UDP or USB, then start the API:
 
 ```bash
-uav-api --port 8000 --uav_connection 127.0.0.1:17171 --connection_type udpin --sysid 1
+uav-mcp --port 8000 --uav_connection 127.0.0.1:17171 --connection_type udpin --sysid 1
 ```
 
 The `--connection_type` controls the UDP direction:
@@ -63,7 +65,7 @@ The `--connection_type` controls the UDP direction:
 This starts both ArduCopter SITL (in a new `xterm` window) and the API:
 
 ```bash
-uav-api --simulated true --ardupilot_path ~/ardupilot --speedup 1 --port 8000 --sysid 1
+uav-mcp --simulated true --ardupilot_path ~/ardupilot --speedup 1 --port 8000 --sysid 1
 ```
 
 SITL will bind to the address in `--uav_connection` (default `127.0.0.1:17171`). The `--speedup` factor controls simulation speed (e.g. `5` = 5× real time). The `--location` argument sets the SITL home position (default `AbraDF`).
@@ -95,7 +97,7 @@ script_logs=None
 Run with:
 
 ```bash
-uav-api --config /path/to/config.ini
+uav-mcp --config /path/to/config.ini
 ```
 
 CLI arguments always override values from the config file. Example config files for single and multi-UAV setups are available at `flight_examples/uavs/uav_1.ini` and `uav_2.ini`.
@@ -118,11 +120,36 @@ A successful response confirms the API is connected to the vehicle:
 
 ![image](https://github.com/user-attachments/assets/47e7c802-6411-4864-9f1c-280327c4303c)
 
+## Connecting an MCP Client
+
+The MCP endpoint is available at `http://localhost:<port>/mcp`. All REST endpoints are automatically exposed as MCP tools via Streamable HTTP transport.
+
+**Single drone (Claude Desktop, Claude Code, or any MCP client):**
+```json
+{
+  "mcpServers": {
+    "uav-1": { "url": "http://localhost:8000/mcp" }
+  }
+}
+```
+
+**Multi-drone setup (one MCP server per drone, different ports/sysids):**
+```json
+{
+  "mcpServers": {
+    "uav-1": { "url": "http://localhost:8001/mcp" },
+    "uav-2": { "url": "http://localhost:8002/mcp" }
+  }
+}
+```
+
+MCP tools are organized in three groups: **command** (arm, takeoff, land, RTL, speed settings), **movement** (GPS/NED navigation, velocity control, stop/resume), and **telemetry** (position, battery, sensors, errors).
+
 ---
 
 # CLI Arguments Reference
 
-All arguments can be passed on the command line or set in an INI config file. Run `uav-api --help` for a quick reference.
+All arguments can be passed on the command line or set in an INI config file. Run `uav-mcp --help` for a quick reference.
 
 ## General (all modes)
 
@@ -170,7 +197,7 @@ All arguments can be passed on the command line or set in an INI config file. Ru
 When `--gradys_gs <host:port>` is set, the API starts a background coroutine that POSTs the vehicle's GPS position to the Gradys GS every second:
 
 ```bash
-uav-api --port 8000 --sysid 1 --gradys_gs 192.168.1.10:5000
+uav-mcp --port 8000 --sysid 1 --gradys_gs 192.168.1.10:5000
 ```
 
 Each POST to `http://<gradys_gs>/update-info/` includes: latitude, longitude, altitude, device type, a sequence number, and the API's own IP and port. This allows the Gradys ecosystem to track the UAV in real time.
@@ -180,7 +207,7 @@ Each POST to `http://<gradys_gs>/update-info/` includes: latitude, longitude, al
 When running in simulated mode, use `--gs_connection` to stream MAVLink telemetry to Mission Planner (or any GCS software):
 
 ```bash
-uav-api --simulated true --ardupilot_path ~/ardupilot --sysid 1 --gs_connection [192.168.1.5:14550]
+uav-mcp --simulated true --ardupilot_path ~/ardupilot --sysid 1 --gs_connection [192.168.1.5:14550]
 ```
 
 Connect Mission Planner to the specified UDP address to see live position, attitude, and flight data.
@@ -193,16 +220,16 @@ Control what gets logged and where with the logging arguments:
 
 ```bash
 # Print COPTER and API logs to console
-uav-api --log_console COPTER API ...
+uav-mcp --log_console COPTER API ...
 
 # Write all logs to a file
-uav-api --log_path ~/uav_api.log ...
+uav-mcp --log_path ~/uav_mcp.log ...
 
 # Enable DEBUG verbosity for the COPTER component
-uav-api --debug COPTER ...
+uav-mcp --debug COPTER ...
 
 # Save script stdout/stderr to a directory
-uav-api --script_logs ~/uav_api_logs/script_logs ...
+uav-mcp --script_logs ~/uav_mcp_logs/script_logs ...
 ```
 
 Available log components: `COPTER`, `API`, `GRADYS_GS`.
@@ -257,14 +284,14 @@ One of the perks of using UAV API is being aple to quickly write scripts that co
 ## Running examples
 To run the following examples run the following command inside of the `flight_examples` directory:
 
-  `uav-api --config ./uav_1.ini`
+  `uav-mcp --config ./uav_1.ini`
 
 Note that this configuration file contains default values for parameters, change the values such that it matches your envinronment. You can also use your own configuration file or start the api through arguments.
 
 Once the api is up and running, run one of the examples bellow in a new terminal instance.
 
 ## Simple Takeoff and Landing
-This file is located at `uav_api/flight_examples/takeoff_land.py`
+This file is located at `flight_examples/takeoff_land.py`
 ```python
 import requests
 base_url = "http://localhost:8000"
@@ -419,7 +446,7 @@ print("Vehicle landed at launch.")
 
 ## Follower
 In this example one UAV will perform a square flight (shown previously) while another UAV follows it by consuming the leader API.
-To run this example start 2 different uav-api process with different ports and sysid. Now start the square script using the first UAV port number, then start the follower script (located at `flight_examples/follower.py`) with the port number of the second UAV.
+To run this example start 2 different uav-mcp process with different ports and sysid. Now start the square script using the first UAV port number, then start the follower script (located at `flight_examples/follower.py`) with the port number of the second UAV.
 ```python
 import requests
 from time import sleep, time
@@ -1196,21 +1223,21 @@ if __name__ == "__main__":
 
 | Path | Purpose |
 |------|---------|
-| `uav_api/run_api.py` | CLI entry point — parses args, runs setup, launches uvicorn |
-| `uav_api/api_app.py` | FastAPI app definition and lifespan (startup/shutdown logic) |
-| `uav_api/copter.py` | Core vehicle abstraction — all MAVLink logic (~1850 lines) |
-| `uav_api/args.py` | CLI argument parsing; config serialized to `UAV_ARGS` env var |
-| `uav_api/router_dependencies.py` | Singleton `Copter` instance and `args` via `Depends()` |
-| `uav_api/gradys_gs.py` | Async coroutine that POSTs GPS location to Gradys GS every second |
-| `uav_api/log.py` | Logger configuration (file + console, per-component) |
-| `uav_api/setup.py` | Idempotent home-directory setup (log dirs, scripts dir, ArduPilot config) |
-| `uav_api/routers/command.py` | Endpoints: arm, takeoff, land, RTL, speed, home |
-| `uav_api/routers/movement.py` | Endpoints: go_to_gps, go_to_ned, drive (fire-and-forget + blocking pairs) |
-| `uav_api/routers/telemetry.py` | Endpoints: GPS, NED, compass, battery, sensor status, home info |
-| `uav_api/routers/mission.py` | Endpoints: upload-script, list-scripts, execute-script |
-| `uav_api/routers/peripherical.py` | Endpoints: take_picture |
-| `uav_api/classes/pos.py` | Pydantic models: `GPS_pos`, `Local_pos` |
-| `uav_api/classes/script.py` | Pydantic model: `Script` |
+| `uav_mcp/run_api.py` | CLI entry point — parses args, runs setup, launches uvicorn |
+| `uav_mcp/api_app.py` | FastAPI app definition and lifespan (startup/shutdown logic) |
+| `uav_mcp/copter.py` | Core vehicle abstraction — all MAVLink logic (~1850 lines) |
+| `uav_mcp/args.py` | CLI argument parsing; config serialized to `UAV_ARGS` env var |
+| `uav_mcp/router_dependencies.py` | Singleton `Copter` instance and `args` via `Depends()` |
+| `uav_mcp/gradys_gs.py` | Async coroutine that POSTs GPS location to Gradys GS every second |
+| `uav_mcp/log.py` | Logger configuration (file + console, per-component) |
+| `uav_mcp/setup.py` | Idempotent home-directory setup (log dirs, scripts dir, ArduPilot config) |
+| `uav_mcp/routers/command.py` | Endpoints: arm, takeoff, land, RTL, speed, home |
+| `uav_mcp/routers/movement.py` | Endpoints: go_to_gps, go_to_ned, drive (fire-and-forget + blocking pairs) |
+| `uav_mcp/routers/telemetry.py` | Endpoints: GPS, NED, compass, battery, sensor status, home info |
+| `uav_mcp/routers/mission.py` | Endpoints: upload-script, list-scripts, execute-script |
+| `uav_mcp/routers/peripherical.py` | Endpoints: take_picture |
+| `uav_mcp/classes/pos.py` | Pydantic models: `GPS_pos`, `Local_pos` |
+| `uav_mcp/classes/script.py` | Pydantic model: `Script` |
 | `flight_examples/` | Example client scripts and INI config files |
 
 ## Processes and Coroutines
@@ -1220,7 +1247,7 @@ The application lifecycle is managed by a FastAPI `@asynccontextmanager` lifespa
 ### Always started
 
 **uvicorn HTTP server**
-Launched by `uav_api/run_api.py`. All processes below run within its lifetime.
+Launched by `uav_mcp/run_api.py`. All processes below run within its lifetime.
 
 **MAVLink drain loop**
 An `asyncio` task running `copter.run_drain_mav_loop()`. Continuously drains buffered MAVLink messages to prevent connection stalls. Cancelled on shutdown.
@@ -1233,11 +1260,11 @@ Spawned as `xterm -e sim_vehicle.py -v ArduCopter ...` subprocess. Tagged with a
 ### Conditional: Gradys GS integration (`--gradys_gs` is set)
 
 **GS location push coroutine**
-An `asyncio` task running `send_location_to_gradys_gs()` (defined in `uav_api/gradys_gs.py`). POSTs the vehicle's GPS position to `http://<gradys_gs>/update-info/` every second using a shared `aiohttp.ClientSession`. Task is cancelled and the session is closed on shutdown.
+An `asyncio` task running `send_location_to_gradys_gs()` (defined in `uav_mcp/gradys_gs.py`). POSTs the vehicle's GPS position to `http://<gradys_gs>/update-info/` every second using a shared `aiohttp.ClientSession`. Task is cancelled and the session is closed on shutdown.
 
 ## Dependency Injection
 
-A single `Copter` instance and a single `args` namespace are held as module-level globals in `uav_api/router_dependencies.py`. All routers receive them via FastAPI's `Depends()`:
+A single `Copter` instance and a single `args` namespace are held as module-level globals in `uav_mcp/router_dependencies.py`. All routers receive them via FastAPI's `Depends()`:
 
 ```python
 Depends(get_copter_instance)  # shared Copter (one MAVLink connection)
@@ -1255,3 +1282,7 @@ All successful responses follow a uniform envelope:
 ```
 
 Telemetry endpoints add an `"info": {...}` field with the sensor data. All errors raise `HTTP 500` with a descriptive `"detail"` string.
+
+## MCP Server Layer
+
+`FastApiMCP` from `fastapi-mcp` wraps the FastAPI app (`uav_mcp/api_app.py:137-144`), automatically converting all REST endpoints into MCP tools. The MCP server is mounted at `/mcp` via Streamable HTTP transport (`mcp.mount_http(app)`). Tool descriptions are enriched with `describe_all_responses=True` and `describe_full_response_schema=True` for better LLM usability.

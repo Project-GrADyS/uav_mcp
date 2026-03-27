@@ -3,13 +3,13 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["uav_api*"]
+include = ["uav_mcp*"]
 
 [project]
-name = "uav_api"
+name = "uav_mcp"
 version = "0.1.0"
-description = "Uav_api is a python package that provides a HTTP interface for MAVLink commands for ardupilot vehicles"
-keywords = ["mavlink", "http", "simulation", "gradys", "LAC", "PUC", "drone", "ardupilot"]
+description = "MCP server for controlling ArduPilot UAVs. Exposes drone command, movement, and telemetry as MCP tools via Streamable HTTP."
+keywords = ["mavlink", "http", "simulation", "gradys", "LAC", "PUC", "drone", "ardupilot", "mcp", "llm"]
 authors = [
     { name = "Francisco Meirelles Fleury", email = "franmeifleury@gmail.com" }
 ]
@@ -37,7 +37,7 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/Project-GrADyS/uav_api"
+"Homepage" = "https://github.com/Project-GrADyS/uav_mcp"
 
 [project.scripts]
-uav-api = "uav_api.run_api:main"
+uav-mcp = "uav_mcp.run_api:main"

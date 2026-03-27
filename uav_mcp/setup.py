@@ -29,21 +29,21 @@ def setup(args):
     ensure_home_file_exists(".config/ardupilot/locations.txt", locations)
 
     if args.log_path is None:
-        ensure_home_subdir_exists("uav_api_logs")
-        ensure_home_subdir_exists("uav_api_logs/uav_logs")
-        ensure_home_file_exists(f"uav_api_logs/uav_logs/uav_{args.sysid}.log")
+        ensure_home_subdir_exists("uav_mcp_logs")
+        ensure_home_subdir_exists("uav_mcp_logs/uav_logs")
+        ensure_home_file_exists(f"uav_mcp_logs/uav_logs/uav_{args.sysid}.log")
         if args.simulated:
-            ensure_home_subdir_exists("uav_api_logs/ardupilot_logs")
+            ensure_home_subdir_exists("uav_mcp_logs/ardupilot_logs")
 
         home_dir = os.path.expanduser("~")  # Gets the user's home directory
-        args.log_path = os.path.join(home_dir, "uav_api_logs","uav_logs",f"uav_{args.sysid}.log")
+        args.log_path = os.path.join(home_dir, "uav_mcp_logs","uav_logs",f"uav_{args.sysid}.log")
 
     if args.script_logs is None:
-        ensure_home_subdir_exists("uav_api_logs")
-        ensure_home_subdir_exists("uav_api_logs/script_logs")
+        ensure_home_subdir_exists("uav_mcp_logs")
+        ensure_home_subdir_exists("uav_mcp_logs/script_logs")
 
         home_dir = os.path.expanduser("~")  # Gets the user's home directory
-        args.script_logs = os.path.join(home_dir, "uav_api_logs","script_logs")
+        args.script_logs = os.path.join(home_dir, "uav_mcp_logs","script_logs")
 
     if args.scripts_path is None:
         ensure_home_subdir_exists("uav_scripts")

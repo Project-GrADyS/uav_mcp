@@ -1,9 +1,9 @@
 from argparse import Namespace
 from time import sleep
 from fastapi import APIRouter, Depends, HTTPException
-from uav_api.copter import Copter
-from uav_api.router_dependencies import get_copter_instance, get_args
-from uav_api.classes.movement import Gps_pos, Local_pos, Local_velocity
+from uav_mcp.copter import Copter
+from uav_mcp.router_dependencies import get_copter_instance, get_args
+from uav_mcp.classes.movement import Gps_pos, Local_pos, Local_velocity
 
 movement_router = APIRouter(
     prefix = "/movement",

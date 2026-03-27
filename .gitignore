@@ -1,7 +1,7 @@
-uav_api/__pycache__/
-uav_api/*/__pycache__/
-uav_api/*/__pycache__/*.pyc
-uav_api.egg-info
+uav_mcp/__pycache__/
+uav_mcp/*/__pycache__/
+uav_mcp/*/__pycache__/*.pyc
+uav_mcp.egg-info
 dist
 CLAUDE.md
 .claude

@@ -1,7 +1,7 @@
 """
 Integration tests for the movement router.
 
-Spawns a full uav-api server with SITL, arms and takes off,
+Spawns a full uav-mcp server with SITL, arms and takes off,
 then exercises every movement endpoint against the live simulation.
 
 Run:
@@ -13,7 +13,7 @@ import signal
 import pytest
 import requests
 
-from uav_api.run_api import run_with_args
+from uav_mcp.run_api import run_with_args
 
 BASE_URL = "http://localhost:8001"
 SPEEDUP = 5

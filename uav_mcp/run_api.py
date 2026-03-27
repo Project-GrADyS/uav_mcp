@@ -1,8 +1,8 @@
 import subprocess
 import sys
 
-from uav_api.args import parse_args, write_args_to_env
-from uav_api.setup import setup
+from uav_mcp.args import parse_args, write_args_to_env
+from uav_mcp.setup import setup
 def run_with_args(raw_args=None):
     args = parse_args(raw_args)
     args = setup(args)
@@ -10,7 +10,7 @@ def run_with_args(raw_args=None):
     
     process = subprocess.Popen([
         sys.executable, "-m", "uvicorn",
-        "uav_api.api_app:app",
+        "uav_mcp.api_app:app",
         "--host", "0.0.0.0",
         "--port", str(args.port),
         "--log-level", "debug",
@@ -28,7 +28,7 @@ def main():
     except KeyboardInterrupt:
         api_process.terminate()
         api_process.wait()  # Wait for the process to actually terminate
-        print("UAV API process terminated.")
+        print("UAV MCP process terminated.")
 
 if __name__ == "__main__":
     main()

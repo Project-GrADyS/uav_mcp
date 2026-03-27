@@ -7,14 +7,14 @@ import subprocess
 
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from uav_api.router_dependencies import get_copter_instance
-from uav_api.routers.movement import movement_router
-from uav_api.routers.command import command_router
-from uav_api.routers.telemetry import telemetry_router
+from uav_mcp.router_dependencies import get_copter_instance
+from uav_mcp.routers.movement import movement_router
+from uav_mcp.routers.command import command_router
+from uav_mcp.routers.telemetry import telemetry_router
 from fastapi_mcp import FastApiMCP
-from uav_api.log import set_log_config
-from uav_api.args import read_args_from_env
-from uav_api.gradys_gs import send_location_to_gradys_gs
+from uav_mcp.log import set_log_config
+from uav_mcp.args import read_args_from_env
+from uav_mcp.gradys_gs import send_location_to_gradys_gs
 
 args = read_args_from_env()
 
@@ -73,7 +73,7 @@ async def lifespan(app: FastAPI):
         
         out_str = f"--out {args.uav_connection} {' '.join([f'--out {address}' for address in args.gs_connection])} "
         home_dir = os.path.expanduser("~")
-        ardupilot_logs = os.path.join(home_dir, "uav_api_logs", "ardupilot_logs")
+        ardupilot_logs = os.path.join(home_dir, "uav_mcp_logs", "ardupilot_logs")
         sitl_command = f"xterm -e {script_path} -v ArduCopter -I {args.sysid} --sysid {args.sysid} -N -L {args.location} --speedup {args.speedup} {out_str} --use-dir={ardupilot_logs}"
         
         # Start the process with the custom environment
@@ -123,7 +123,7 @@ async def lifespan(app: FastAPI):
         await session.close()
         print("Gradys GS location task closed.")
 app = FastAPI(
-    title="Uav_API",
+    title="UAV_MCP",
     summary=f"API designed to simplify Copter control for Ardupilot UAVs (for now only QuadCopter is supported).",
     description=description,
     version="0.0.4",

@@ -43,12 +43,12 @@ def client():
 
     # Build a fresh app without the lifespan to avoid SITL/logging setup
     from fastapi import FastAPI
-    from uav_api.routers.command import command_router
-    from uav_api.routers.movement import movement_router
-    from uav_api.routers.telemetry import telemetry_router
+    from uav_mcp.routers.command import command_router
+    from uav_mcp.routers.movement import movement_router
+    from uav_mcp.routers.telemetry import telemetry_router
     from fastapi_mcp import FastApiMCP
 
-    app = FastAPI(title="UAV API Test")
+    app = FastAPI(title="UAV MCP Test")
     app.include_router(command_router)
     app.include_router(movement_router)
     app.include_router(telemetry_router)
@@ -61,7 +61,7 @@ def client():
     )
     mcp.mount_http(app)
 
-    from uav_api.router_dependencies import get_copter_instance, get_args
+    from uav_mcp.router_dependencies import get_copter_instance, get_args
     mock_copter = MagicMock()
     app.dependency_overrides[get_copter_instance] = lambda: mock_copter
     app.dependency_overrides[get_args] = lambda: test_args

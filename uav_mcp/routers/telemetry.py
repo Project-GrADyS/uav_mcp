@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
-from uav_api.copter import Copter
-from uav_api.router_dependencies import get_copter_instance, get_args
+from uav_mcp.copter import Copter
+from uav_mcp.router_dependencies import get_copter_instance, get_args
 from argparse import Namespace
 
 telemetry_router = APIRouter(

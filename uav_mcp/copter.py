@@ -13,7 +13,7 @@ from MAVProxy.modules.lib import mp_util
 from pymavlink import mavutil
 from pymavlink.rotmat import Vector3
 from pymavlink.mavutil import location
-from uav_api.classes.movement import Local_pos
+from uav_mcp.classes.movement import Local_pos
 
 class ErrorException(Exception):
     """Base class for other exceptions"""
