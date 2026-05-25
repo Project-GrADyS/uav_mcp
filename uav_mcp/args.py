@@ -3,7 +3,6 @@ import configparser
 import json
 import argparse
 import os
-import ast
 
 def namespace_to_str(namespace: argparse.Namespace) -> str:
     """Convert argparse.Namespace to a JSON string."""
@@ -24,21 +23,16 @@ def read_args_from_env() -> argparse.Namespace:
         return str_to_namespace(args_str)
     return None
 
-def parse_config_file(file_path):
-    config = configparser.ConfigParser()
-    config.read(file_path)
-    print(config.sections())
-
 def parse_args(raw_args=None):
-    parser = argparse.ArgumentParser(description="Welcome to the UAV Runner, this script runs an API that interfaces with Ardupilots instances (real or simulated).")
+    parser = argparse.ArgumentParser(description="Welcome to the UAV MCP Runner. Starts an MCP server that proxies tool calls to a uav_api HTTP server (spawned locally or external).")
     parse_mode(parser)
-    parse_api(parser)
+    parse_mcp(parser)
+    parse_uav_api(parser)
     parse_logs(parser)
     parse_simulated(parser)
     args = parser.parse_args(raw_args)
 
     if args.config:
-        #parse_config_file(args.config)
         config = configparser.ConfigParser()
         config.read(args.config)
 
@@ -55,7 +49,7 @@ def parse_args(raw_args=None):
                 else:
                     print(f"Warning: {key} not found in args")
     return args
-    
+
 # MODE PARSER
 def parse_mode(mode_parser):
 
@@ -64,7 +58,7 @@ def parse_mode(mode_parser):
         dest='simulated',
         type=bool,
         default=False,
-        help="Wheter to simulate copter using Ardupilot's SITL or not"
+        help="Whether to simulate copter using ArduPilot's SITL. Passed through to the spawned uav-api."
     )
 
     mode_parser.add_argument(
@@ -74,29 +68,47 @@ def parse_mode(mode_parser):
         help="Configuration file for UAV execution"
     )
 
-# API PARSER
-def parse_api(api_parser):
+# MCP PARSER (uav_mcp-owned args)
+def parse_mcp(mcp_parser):
 
-    api_parser.add_argument(
+    mcp_parser.add_argument(
         '--port',
         dest='port',
         type=int,
         default=8000,
-        help='Port for api to run on'
+        help='Port the MCP server (streamable HTTP) listens on'
     )
+
+    mcp_parser.add_argument(
+        '--uav_api_url',
+        dest='uav_api_url',
+        default=None,
+        help='URL of an already-running uav_api. If set, uav_mcp connects to it instead of spawning its own.'
+    )
+
+    mcp_parser.add_argument(
+        '--uav_api_port',
+        dest='uav_api_port',
+        type=int,
+        default=8001,
+        help='Port the spawned uav-api subprocess listens on (ignored when --uav_api_url is set).'
+    )
+
+# UAV API PARSER (passed through to spawned uav-api)
+def parse_uav_api(api_parser):
 
     api_parser.add_argument(
         '--uav_connection',
         dest='uav_connection',
         default='127.0.0.1:17171',
-        help='Address used for copter connection'
+        help='Address used for copter connection (passed through to uav-api)'
     )
 
     api_parser.add_argument(
         '--connection_type',
         dest='connection_type',
         default='udpin',
-        help="Connection type (client or server) for copter. Either udpin or udpout"
+        help="Connection type for copter (udpin, udpout, usb). Passed through to uav-api."
     )
 
     api_parser.add_argument(
@@ -104,7 +116,7 @@ def parse_api(api_parser):
         dest='sysid',
         type=int,
         default=10,
-        help='Sysid for Copter'
+        help='MAVLink system ID. Passed through to uav-api.'
     )
 
     api_parser.add_argument(
@@ -112,7 +124,7 @@ def parse_api(api_parser):
         dest='gradys_gs',
         type=str,
         default=None,
-        help='Address for Gradys Ground Station connection'
+        help='Address for Gradys Ground Station. When set, uav-api pushes GPS location every second.'
     )
 
     api_parser.add_argument(
@@ -120,7 +132,7 @@ def parse_api(api_parser):
         dest='scripts_path',
         type=str,
         default="~/uav_scripts",
-        help='Path for uav_scripts directory'
+        help='Path for uav_scripts directory (passed through to uav-api)'
     )
 
     api_parser.add_argument(
@@ -128,7 +140,7 @@ def parse_api(api_parser):
         dest='python_path',
         type=str,
         default="python3",
-        help='Path for python binary to use when executing scripts'
+        help='Python binary used by uav-api to run scripts'
     )
 # SIMULATED PARSER
 def parse_simulated(simulated_parser):
@@ -137,8 +149,8 @@ def parse_simulated(simulated_parser):
         '--location',
         dest='location',
         default="AbraDF",
-        help="""Location name for UAV home. To register a new location name run the following command:
-            bash scripts/registry_location [LOCATION_NAME] [GPS_LAT] [GPS_LONG] [GPS_ALT] [HEADING]
+        help="""Named home location for SITL (passed through to uav-api). To register a new location,
+            run `bash scripts/registry_location [LOCATION_NAME] [GPS_LAT] [GPS_LONG] [GPS_ALT] [HEADING]` in the uav_api repo.
         """
     )
 
@@ -146,7 +158,7 @@ def parse_simulated(simulated_parser):
         '--gs_connection',
         dest='gs_connection',
         default=[],
-        help="Address for GroundStation connection",
+        help="Extra host:port addresses SITL streams telemetry to (e.g. Mission Planner)",
         nargs='*'
     )
 
@@ -155,31 +167,23 @@ def parse_simulated(simulated_parser):
         dest='speedup',
         type=int,
         default=1,
-        help="Multiplication factor for simulation time."
+        help="SITL simulation time multiplier (passed through to uav-api)"
     )
 
     simulated_parser.add_argument(
         '--ardupilot_path',
         dest='ardupilot_path',
         default='~/ardupilot',
-        help="Path for ardupilot repository"
+        help="Path to local ArduPilot repository (passed through to uav-api)"
     )
 
 def parse_logs(logs_parser):
 
-    # Defines which values are accepted as a LOGGER input.
-    def valid_loggers_type(value):
-        valid_loggers = {'API', 'COPTER', 'GRADYS_GS'}
-        if not value in valid_loggers:
-            raise argparse.ArgumentTypeError('Invalid value. Please choose one of the following: value1, value2, or both')
-        return value
-    
     logs_parser.add_argument(
         "--log_console",
         dest="log_console",
         default=[],
-        type=valid_loggers_type,
-        help="List of loggers to be handled in console. This loggers need to be a subset of: COPTER, PROTOCOL and API.",
+        help="Loggers to print to console. Passed through to uav-api (valid values: API, COPTER, GRADYS_GS).",
         nargs='*'
     )
 
@@ -187,15 +191,14 @@ def parse_logs(logs_parser):
         "--log_path",
         dest="log_path",
         default=None,
-        help="Saves log files to the provided path. This log file will receive the logs from all loggers of that UAV. Which include: COPTER, GRADYS_GS and API."
+        help="File path for combined uav-api logs (passed through)."
     )
 
     logs_parser.add_argument(
         "--debug",
         dest="debug",
         default=[],
-        type=valid_loggers_type,
-        help="Which loggers to apply debug level. Possible logger: COPTER, PROTOCOL and API.",
+        help="Loggers to set to DEBUG level. Passed through to uav-api.",
         nargs="*"
     )
 
@@ -203,5 +206,5 @@ def parse_logs(logs_parser):
         "--script_logs",
         dest="script_logs",
         default=None,
-        help="Saves script executed by mission route out and err files to the provided path"
+        help="Directory where uav-api saves stdout/stderr of executed scripts (passed through)."
     )

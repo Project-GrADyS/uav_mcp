@@ -1,64 +1,42 @@
-import asyncio
-
 import anyio
 
 from uav_mcp.args import parse_args, write_args_to_env
-from uav_mcp.setup import setup
 
 
 async def _run():
-    from uav_mcp.mcp_app import (
-        mcp,
-        args,
-        start_sitl,
-        start_copter,
-        start_gradys_gs,
-        kill_sitl_by_tag,
-    )
+    from uav_mcp.mcp_app import mcp, wait_for_uav_api, base_url
+    from uav_mcp import uav_api_client
 
-    # Startup
-    sitl_tag = start_sitl(args)
-    copter = start_copter(args)
-
-    drain_task = asyncio.create_task(copter.run_drain_mav_loop())
-    gs_task, gs_session = await start_gradys_gs(args, copter)
-
-    print("MCP server is ready.")
-
-    # Run MCP server (blocks until shutdown)
-    await mcp.run_streamable_http_async()
-
-    # Shutdown
-    print("Shutting down MCP server...")
-
-    if sitl_tag is not None:
-        print("Closing SITL and all associated windows...")
-        kill_sitl_by_tag(sitl_tag)
-        print("SITL and associated windows closed.")
-
-    print("Cancelling Drain MAVLink loop...")
-    drain_task.cancel()
+    url = base_url()
     try:
-        await drain_task
-    except asyncio.CancelledError:
-        print("Drain MAVLink loop has been cancelled.")
+        await wait_for_uav_api(url)
+        await uav_api_client.init(url)
 
-    if gs_task is not None:
-        print("Cancelling Gradys GS location task...")
-        gs_task.cancel()
+        print("MCP server is ready.")
+        await mcp.run_streamable_http_async()
+    finally:
+        print("Shutting down MCP server...")
         try:
-            await gs_task
-        except asyncio.CancelledError:
-            print("Location task has been cancelled.")
-        await gs_session.close()
-        print("Gradys GS location task closed.")
+            await uav_api_client.close()
+        except BaseException:
+            pass
 
 
 def main():
     args = parse_args()
-    args = setup(args)
     write_args_to_env(args)
-    anyio.run(_run)
+
+    from uav_mcp.mcp_app import start_uav_api, kill_uav_api_by_tag
+
+    api_tag = start_uav_api()
+    try:
+        anyio.run(_run)
+    except KeyboardInterrupt:
+        print("UAV MCP terminated by user.")
+    finally:
+        if api_tag is not None:
+            print(f"Killing spawned uav-api (tag={api_tag})...")
+            kill_uav_api_by_tag(api_tag)
 
 
 if __name__ == "__main__":
