@@ -214,7 +214,7 @@ The LLM agent can then control multiple drones by calling tools on each server.
 
 Tools are organized in three groups:
 
-**Command:** `arm_and_takeoff` — arms the vehicle, switches to GUIDED mode, and takes off to a specified altitude.
+**Command:** `arm_and_takeoff`, `rtl` — arm/takeoff and return-to-launch.
 
 **Movement:** `go_to_gps`, `go_to_gps_wait`, `go_to_ned`, `go_to_ned_wait`, `drive`, `drive_wait`, `stop`, `resume` — GPS and NED navigation with fire-and-forget and blocking variants.
 

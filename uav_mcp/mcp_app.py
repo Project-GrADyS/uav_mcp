@@ -144,6 +144,18 @@ async def arm_and_takeoff(alt: int = 15) -> str:
     return _ok(f"Armed and took off to {alt} meters")
 
 
+@mcp.tool()
+async def rtl() -> str:
+    """Return to launch. Commands the vehicle to fly back to its HOME position and land.
+    Blocks until the vehicle has landed and disarmed. Use this as a safe-recovery command
+    when telemetry looks wrong, battery is low, or a mission is complete."""
+    try:
+        body = await uav_api_client.get("/command/rtl")
+    except Exception as e:
+        return _err("RTL", e)
+    return json.dumps(body)
+
+
 # ──────────────────────────── Movement Tools ────────────────────────────
 
 @mcp.tool()
